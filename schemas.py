@@ -105,11 +105,12 @@ class WorkflowResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    final_document: str
-    requirements: DocumentRequirements
-    evidence_pack: EvidencePack
-    review: DocumentReview
-    iterations: int = Field(ge=1)
-    approved: bool
-    max_iterations_reached: bool
+    final_document: str = ""
+    requirements: DocumentRequirements | None = None
+    evidence_pack: EvidencePack = Field(default_factory=EvidencePack)
+    review: DocumentReview | None = None
+    iterations: int = Field(default=0, ge=0)
+    approved: bool = False
+    max_iterations_reached: bool = False
     history: list[DraftCycle] = Field(default_factory=list)
+    error: str | None = None
