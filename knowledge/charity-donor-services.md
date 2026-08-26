@@ -14,7 +14,7 @@ technologies:
   - Salesforce Data Cloud
   - MuleSoft
   - Salesforce Service Cloud
-  - Tableau
+  - Tableau BI
 outcomes:
   - More complete view of supporter interactions
   - Improved coordination between fundraising and care teams
