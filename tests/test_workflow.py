@@ -11,6 +11,7 @@ from schemas import (
     DocumentRequirements,
     DocumentReview,
     EvidencePack,
+    FormattedDocument,
     RetrievedEvidence,
 )
 
@@ -32,6 +33,20 @@ def review() -> DocumentReview:
             "content_score": 0.9,
             "style_score": 0.9,
             "scores": {dimension: 0.9 for dimension in dimensions},
+        }
+    )
+
+
+def formatted_document() -> FormattedDocument:
+    return FormattedDocument.model_validate(
+        {
+            "title": "Final document",
+            "sections": [
+                {
+                    "heading": "Summary",
+                    "blocks": [{"kind": "paragraph", "text": "Ready."}],
+                }
+            ],
         }
     )
 
@@ -103,7 +118,7 @@ class WorkflowEvidenceTests(unittest.IsolatedAsyncioTestCase):
                 return {"current_draft": "Draft document."}
             if current_agent is reviewer_agent:
                 return {"review": review().model_dump_json()}
-            return {"final_document": "Final document."}
+            return {"formatted_document": formatted_document().model_dump_json()}
 
         progress: list[str] = []
         with (
@@ -118,7 +133,7 @@ class WorkflowEvidenceTests(unittest.IsolatedAsyncioTestCase):
         ):
             result = await agent.generate_document("Create a retail proposal.", progress.append)
 
-        self.assertEqual(result.final_document, "Final document.")
+        self.assertEqual(result.final_document, "# Final document\n\n## Summary\n\nReady.")
         self.assertEqual(len(result.retrieved_evidence), 2)
         self.assertEqual(result.evidence_pack, selected_evidence)
         search.assert_called_once_with(
@@ -129,8 +144,26 @@ class WorkflowEvidenceTests(unittest.IsolatedAsyncioTestCase):
         )
         selected_chunks = json.loads(case_state_deltas[0]["retrieved_evidence"])
         self.assertEqual(len(selected_chunks), 2)
-        self.assertIn("2 relevant case studies found", progress)
-        self.assertIn("1 case studies selected", progress)
+        self.assertIn(
+            ":green[Case Study Retriever]: found Retail Demand Forecasting Programme",
+            progress,
+        )
+        self.assertIn(
+            ":green[Case Study Retriever]: found Retail Customer Analytics Hub", progress
+        )
+        self.assertIn(
+            ":green[Case Study Selector]: selected Retail Demand Forecasting Programme",
+            progress,
+        )
+        self.assertIn(":green[Requirement Analyzer]: requirements analysed", progress)
+        self.assertIn(
+            "Iteration 1/5 | :green[Document Writer]: draft generated", progress
+        )
+        self.assertIn(
+            "Iteration 1/5 | :green[Document Reviewer]: quality threshold reached",
+            progress,
+        )
+        self.assertIn(":green[Final Editor]: final document ready", progress)
 
     async def test_continues_without_case_study_evidence(self) -> None:
         requirements = DocumentRequirements(purpose="Write a proposal")
@@ -151,7 +184,7 @@ class WorkflowEvidenceTests(unittest.IsolatedAsyncioTestCase):
                 return {"current_draft": "Draft document."}
             if current_agent is reviewer_agent:
                 return {"review": review().model_dump_json()}
-            return {"final_document": "Final document."}
+            return {"formatted_document": formatted_document().model_dump_json()}
 
         with (
             patch.object(agent, "GOOGLE_API_KEY", "test-key"),
@@ -165,10 +198,42 @@ class WorkflowEvidenceTests(unittest.IsolatedAsyncioTestCase):
         ):
             result = await agent.generate_document("Create a proposal.")
 
-        self.assertEqual(result.final_document, "Final document.")
+        self.assertEqual(result.final_document, "# Final document\n\n## Summary\n\nReady.")
         self.assertEqual(result.retrieved_evidence, [])
         self.assertEqual(result.evidence_pack, EvidencePack())
         case_agent.assert_not_called()
+
+    def test_renders_semantic_blocks_as_spaced_markdown(self) -> None:
+        document = FormattedDocument.model_validate(
+            {
+                "title": "  Delivery  plan ",
+                "sections": [
+                    {
+                        "heading": "Approach",
+                        "blocks": [
+                            {
+                                "kind": "paragraph",
+                                "text": "First line\ncontinues here.",
+                            },
+                            {
+                                "kind": "bulleted_list",
+                                "items": ["Clarify scope", "Deliver outcomes"],
+                            },
+                            {
+                                "kind": "numbered_list",
+                                "items": ["Plan", "Deliver"],
+                            },
+                        ],
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(
+            agent._render_final_document(document),
+            "# Delivery plan\n\n## Approach\n\nFirst line continues here.\n\n"
+            "- Clarify scope\n- Deliver outcomes\n\n1. Plan\n2. Deliver",
+        )
 
     async def test_returns_error_when_retrieval_requires_ingestion(self) -> None:
         requirements = DocumentRequirements(purpose="Write a proposal")

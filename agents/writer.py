@@ -12,9 +12,17 @@ def create_writer_agent() -> LlmAgent:
         name="writer_agent",
         description="Writes a professional, evidence-grounded document.",
         model=MODEL_NAME,
-        mode="single_turn",
+        mode="task",
         include_contents="none",
-        instruction="""Write the requested document in Markdown.
+        instruction="""Write the requested document as clean, readable Markdown.
+
+Start with one level-one title that describes the document. Use level-two
+headings for the requested sections, in a logical order. Keep each paragraph
+to two to four short sentences. Use bullets only for lists, benefits, risks,
+or actions that are easier to scan; otherwise write connected prose. Use
+numbered lists only when sequence matters. Put a blank line before and after
+every heading and list. Do not use tables, HTML, horizontal rules, a contents
+section, or prefatory text such as "Here is the document".
 
 Write like a knowledgeable professional explaining something clearly to
 another professional. Do not try to sound impressive. Try to be clear.
@@ -62,7 +70,7 @@ Existing draft, if any:
 Reviewer feedback, if any:
 {review?}
 
-Return only the document in Markdown.
+Return only the complete, properly formatted Markdown document.
 """,
         output_key="current_draft",
         generate_content_config=types.GenerateContentConfig(

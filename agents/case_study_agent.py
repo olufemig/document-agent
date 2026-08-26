@@ -13,7 +13,7 @@ def create_case_study_agent() -> LlmAgent:
         name="case_study_agent",
         description="Selects relevant, source-grounded case-study evidence.",
         model=MODEL_NAME,
-        mode="single_turn",
+        mode="task",
         include_contents="none",
         instruction="""You are a case study research agent.
 

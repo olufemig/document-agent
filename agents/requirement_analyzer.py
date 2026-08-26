@@ -13,7 +13,7 @@ def create_requirement_analyzer() -> LlmAgent:
         name="requirement_analyzer",
         description="Converts a document specification into structured requirements.",
         model=MODEL_NAME,
-        mode="single_turn",
+        mode="task",
         include_contents="none",
         instruction="""You analyse document specifications.
 

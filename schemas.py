@@ -1,6 +1,6 @@
 """Shared Pydantic models for the document workflow."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -88,6 +88,34 @@ class DocumentReview(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
     revision_instructions: list[str] = Field(default_factory=list)
+
+
+class DocumentBlock(BaseModel):
+    """A semantic unit of content in the final document."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["paragraph", "bulleted_list", "numbered_list"]
+    text: str | None = None
+    items: list[str] = Field(default_factory=list)
+
+
+class DocumentSection(BaseModel):
+    """A titled group of related final-document content."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    heading: str
+    blocks: list[DocumentBlock] = Field(min_length=1)
+
+
+class FormattedDocument(BaseModel):
+    """Semantically organised content ready for deterministic Markdown rendering."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    sections: list[DocumentSection] = Field(min_length=1)
 
 
 class DraftCycle(BaseModel):

@@ -30,6 +30,7 @@ from schemas import (
     DocumentReview,
     DraftCycle,
     EvidencePack,
+    FormattedDocument,
     RetrievedEvidence,
     WorkflowResult,
 )
@@ -54,6 +55,28 @@ def _parse_state_model(value: object, model_type: type[ModelT]) -> ModelT:
     if isinstance(value, str):
         return model_type.model_validate_json(value)
     return model_type.model_validate(value)
+
+
+def _render_final_document(document: FormattedDocument) -> str:
+    """Render semantic document blocks into consistently spaced Markdown."""
+    def clean(value: str) -> str:
+        return " ".join(value.split())
+
+    lines = [f"# {clean(document.title)}"]
+    for section in document.sections:
+        lines.extend(("", f"## {clean(section.heading)}"))
+        for block in section.blocks:
+            if block.kind == "paragraph" and block.text:
+                lines.extend(("", clean(block.text)))
+            elif block.kind == "bulleted_list":
+                items = [clean(item) for item in block.items if item.strip()]
+                if items:
+                    lines.extend(("", *(f"- {item}" for item in items)))
+            elif block.kind == "numbered_list":
+                items = [clean(item) for item in block.items if item.strip()]
+                if items:
+                    lines.extend(("", *(f"{index}. {item}" for index, item in enumerate(items, 1))))
+    return "\n".join(lines).strip()
 
 
 async def _run_agent(
@@ -126,13 +149,14 @@ async def generate_document(
     history: list[DraftCycle] = []
 
     try:
+        report(":green[Requirement Analyzer]: analysing document requirements")
         state = await _run_agent(
             create_requirement_analyzer(),
             session_service,
             session_id,
         )
         requirements = _parse_state_model(state["requirements"], DocumentRequirements)
-        report("Requirements analysed")
+        report(":green[Requirement Analyzer]: requirements analysed")
     except (KeyError, ValueError, TypeError) as error:
         return WorkflowResult(error=f"Could not analyse the requirements: {error}")
     except Exception as error:
@@ -158,9 +182,10 @@ async def generate_document(
                 continue
             seen_case_studies.add(evidence.case_study)
             retrieved_evidence.append(evidence)
+            report(f":green[Case Study Retriever]: found {evidence.case_study}")
 
         if retrieved_evidence:
-            report(f"{len(retrieved_evidence)} relevant case studies found")
+            report(":green[Case Study Selector]: selecting relevant case-study evidence")
             state = await _run_agent(
                 create_case_study_agent(),
                 session_service,
@@ -172,9 +197,10 @@ async def generate_document(
                 },
             )
             evidence_pack = _parse_state_model(state["case_study_evidence"], EvidencePack)
-            report(f"{len(evidence_pack.evidence)} case studies selected")
+            for evidence in evidence_pack.evidence:
+                report(f":green[Case Study Selector]: selected {evidence.case_study}")
         else:
-            report("No relevant case study evidence was identified")
+            report(":green[Case Study Retriever]: no relevant case studies found")
     except (KeyError, ValueError, TypeError) as error:
         return WorkflowResult(
             requirements=requirements,
@@ -190,9 +216,16 @@ async def generate_document(
 
     for iteration in range(1, MAX_ITERATIONS + 1):
         try:
+            report(
+                f"Iteration {iteration}/{MAX_ITERATIONS} | "
+                ":green[Document Writer]: generating draft"
+            )
             state = await _run_agent(create_writer_agent(), session_service, session_id)
             current_draft = str(state["current_draft"])
-            report(f"Draft {iteration} generated")
+            report(
+                f"Iteration {iteration}/{MAX_ITERATIONS} | "
+                ":green[Document Writer]: draft generated"
+            )
         except (KeyError, ValueError, TypeError) as error:
             return WorkflowResult(
                 final_document=current_draft,
@@ -217,11 +250,16 @@ async def generate_document(
             )
 
         try:
+            report(
+                f"Iteration {iteration}/{MAX_ITERATIONS} | "
+                ":green[Document Reviewer]: reviewing draft"
+            )
             state = await _run_agent(create_reviewer_agent(), session_service, session_id)
             review = _parse_state_model(state["review"], DocumentReview)
             history.append(DraftCycle(iteration=iteration, draft=current_draft, review=review))
             report(
-                f"Draft {iteration} review: content {review.content_score:.2f} / "
+                f"Iteration {iteration}/{MAX_ITERATIONS} | "
+                f":green[Document Reviewer]: content {review.content_score:.2f} / "
                 f"style {review.style_score:.2f}"
             )
         except (KeyError, ValueError, TypeError) as error:
@@ -246,16 +284,23 @@ async def generate_document(
             )
 
         if is_approved(review):
-            report("Quality threshold reached")
+            report(
+                f"Iteration {iteration}/{MAX_ITERATIONS} | "
+                ":green[Document Reviewer]: quality threshold reached"
+            )
             break
 
     approved = review is not None and is_approved(review)
     max_iterations_reached = not approved
 
     try:
+        report(":green[Final Editor]: formatting and polishing the final document")
         state = await _run_agent(create_final_editor(), session_service, session_id)
-        final_document = str(state["final_document"])
-        report("Final editing complete")
+        formatted_document = _parse_state_model(
+            state["formatted_document"], FormattedDocument
+        )
+        final_document = _render_final_document(formatted_document)
+        report(":green[Final Editor]: final document ready")
     except (KeyError, ValueError, TypeError) as error:
         return WorkflowResult(
             final_document=current_draft,

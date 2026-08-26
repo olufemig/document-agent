@@ -13,7 +13,7 @@ def create_reviewer_agent() -> LlmAgent:
         name="reviewer_agent",
         description="Scores a draft for content and writing quality.",
         model=MODEL_NAME,
-        mode="single_turn",
+        mode="task",
         include_contents="none",
         instruction="""Review the draft against the original specification,
 structured requirements, and supplied case-study evidence. Score every field

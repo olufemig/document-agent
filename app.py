@@ -52,9 +52,10 @@ def main() -> None:
 
     with generate_column:
         if st.button("Generate Document", type="primary"):
+            st.session_state.pop("workflow_result", None)
             with st.status("Generating document", expanded=True) as status:
                 try:
-                    result = asyncio.run(generate_document(document_spec, status.write))
+                    result = asyncio.run(generate_document(document_spec, status.markdown))
                 except Exception as error:
                     status.update(label="Generation failed", state="error")
                     st.error(f"Document generation failed: {error}")
@@ -75,7 +76,8 @@ def main() -> None:
         st.warning("The maximum revision count was reached. Showing the latest edited draft.")
     if result.final_document:
         st.subheader("Final Document")
-        st.markdown(result.final_document)
+        with st.container(border=True):
+            st.markdown(result.final_document)
 
     if result.review:
         st.subheader("Quality")
