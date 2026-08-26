@@ -6,6 +6,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import chromadb
+from chromadb.errors import NotFoundError
 from google import genai
 from google.genai import types
 
@@ -158,7 +159,7 @@ def ingest_knowledge_base(status: Callable[[str], None] | None = None) -> int:
     chroma_client = chromadb.PersistentClient(path=str(VECTOR_STORE_DIR))
     try:
         chroma_client.delete_collection(CHROMA_COLLECTION_NAME)
-    except ValueError:
+    except (ValueError, NotFoundError):
         pass
     collection = chroma_client.get_or_create_collection(
         CHROMA_COLLECTION_NAME,

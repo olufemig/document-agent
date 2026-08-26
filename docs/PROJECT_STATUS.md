@@ -108,7 +108,7 @@ Retrieval defaults to `top_k=5`. LlamaIndex wraps the Chroma collection and uses
 
 `case_study_agent` is instructed to use only supplied chunks, preserve title/source/chunk traceability, select no more than three items, and return no evidence rather than invent facts. The writer and reviewer repeat the prohibition on inventing case-study clients, metrics, technologies, outcomes, dates, or details.
 
-The implementation exists, but no live ingestion or live retrieval against Gemini has been verified in the current repository session.
+Live ingestion has rebuilt the collection with 25 chunks, and a live retail retrieval query returned the expected demand forecasting and customer analytics studies. Full document generation through all Gemini agents remains unverified.
 
 ## 8. Data Models and Pydantic Schemas
 
@@ -250,12 +250,12 @@ There is no separate backend process, frontend build command, formatter, or lint
 
 The Streamlit UI and its initial `AppTest` are present in the working tree but are currently uncommitted. `app.py` is modified, and `tests/test_app.py` plus this status document are untracked according to the current Git status.
 
-The full live path is code-complete but not verified with a real API key in this repository session. It still needs real case-study ingestion, semantic retrieval, all five Gemini agents, revision cycles, and Streamlit interaction exercised together.
+Live case-study ingestion and a live semantic retrieval query have been verified with a real API key. Full document generation still needs all five Gemini agents, revision cycles, final editing, and Streamlit interaction exercised together.
 
 ## 17. Not Yet Implemented
 
 - A populated `README.md`; it is currently empty.
-- Live end-to-end tests against Gemini and a populated Chroma collection.
+- Live end-to-end document-generation tests through all five Gemini agents.
 - Automated CI, linting, formatting, type checking, or coverage configuration.
 - Persistent application sessions, user accounts, authentication, authorization, audit storage, or production deployment configuration.
 - A2UI, AG-UI, A2A, MCP, and any non-Streamlit frontend.
@@ -278,11 +278,11 @@ The full live path is code-complete but not verified with a real API key in this
 
 - `README.md` is empty despite being declared as the project readme in `pyproject.toml`.
 - `llama-index-embeddings-gemini` emits an upstream warning because it imports the deprecated `google.generativeai` package. The current code uses it for retrieval query embeddings while ingestion uses the newer `google-genai` SDK. Live compatibility with `gemini-embedding-001` still needs verification.
-- The repository contains `vector_store/chroma.sqlite3`, but a populated `case_studies` collection has not been verified in this session. Generation intentionally fails with an ingestion instruction when the collection is absent.
+- The local `case_studies` collection was rebuilt successfully with 25 chunks. Generation still intentionally fails with an ingestion instruction when the collection is absent.
 - Tests mock ADK, Gemini, LlamaIndex, and Chroma interactions; they do not validate real API responses, embedding dimensions, or ADK session-state output behavior end to end.
 - Retrieval filters only sector as Chroma metadata. Capabilities are appended to the semantic query because stored capability metadata is combined text.
 - The metadata parser only requires a title. It does not validate every expected case-study metadata field before ingestion.
-- Ingestion catches `ValueError` when deleting an existing collection. The current Chroma client raises `NotFoundError` for a missing collection lookup; live ingestion should confirm whether collection deletion needs the same exception handling.
+- Ingestion now catches both `ValueError` and Chroma's `NotFoundError` when rebuilding an empty collection. This was corrected after the first live ingestion attempt exposed the missing exception path.
 - The UI calls `asyncio.run()` directly during the Streamlit request and does not use a background worker. It provides status updates but does not support cancellation or concurrent runs.
 - There are no TODO, FIXME, XXX, HACK, or `NotImplemented` markers in tracked source/document files found by the repository search.
 
@@ -299,7 +299,7 @@ The current suite uses standard-library `unittest` plus Streamlit's native `AppT
 
 The suite was run during this status update using `uv run python -m unittest discover -s tests -v`: 14 tests passed. The test process emits a harmless Streamlit bare-mode warning and the upstream LlamaIndex Gemini deprecation warning.
 
-Still required are live tests for ingestion, retrieval, all Gemini agent calls, score-driven looping, final editing, and Streamlit button actions using a real key and temporary or disposable Chroma data.
+Still required are live tests for all Gemini agent calls, score-driven looping, final editing, and Streamlit button actions using a real key and the populated Chroma collection.
 
 ## 21. Development Timeline
 
@@ -319,12 +319,12 @@ The current UI implementation and `tests/test_app.py` are not yet represented in
 
 ## 22. Current State Summary
 
-**Current maturity:** Functional prototype with offline tests and an implemented local UI; not yet live-validated against Gemini.
+**Current maturity:** Functional prototype with offline tests, live ingestion, live retrieval, and an implemented local UI; document generation is not yet live-validated.
 
 **Current working flow:** Streamlit input and ingestion controls feed a Python-orchestrated ADK drafting workflow with local Chroma retrieval, evidence selection, review, revisions, and final editing.
 
 **Most important completed capability:** Grounded, traceable case-study retrieval is integrated into the deterministic document self-improvement loop.
 
-**Largest outstanding gap:** A real API-key end-to-end run has not verified ingestion, LlamaIndex query embedding compatibility, retrieval, or generation together.
+**Largest outstanding gap:** A real API-key end-to-end document-generation run has not verified all five agent calls, revision behavior, final editing, and UI results together.
 
-**Recommended next development task:** Populate `.env` with a valid `GOOGLE_API_KEY`, run ingestion, then execute and record an end-to-end Streamlit workflow test before writing the README.
+**Recommended next development task:** Run the Streamlit UI with the populated collection and execute one end-to-end document-generation workflow before writing the README.

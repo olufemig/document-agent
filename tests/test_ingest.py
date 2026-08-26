@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from chromadb.errors import NotFoundError
+
 from retrieval import ingest
 
 
@@ -89,7 +91,7 @@ Second paragraph.
 
             collection = Mock()
             chroma_client = Mock()
-            chroma_client.delete_collection.side_effect = ValueError("Not found")
+            chroma_client.delete_collection.side_effect = NotFoundError("Not found")
             chroma_client.get_or_create_collection.return_value = collection
             gemini_client = Mock()
             gemini_client.models.embed_content.side_effect = lambda **kwargs: SimpleNamespace(
