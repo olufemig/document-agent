@@ -8,7 +8,7 @@ capabilities:
   - Customer relationship management
   - Data integration
   - Supporter insight
-problem: Donor and supporter information was fragmented across fundraising, events and contact-centre systems.
+problem: Donor and supporter information was fragmented across different fundraising, events and contact-centre systems.
 solution: Implemented a unified supporter profile and service workflows for fundraising and supporter-care teams.
 technologies:
   - Salesforce Data Cloud
