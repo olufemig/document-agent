@@ -39,19 +39,23 @@ def main() -> None:
 
     ingest_column, generate_column = st.columns(2)
     with ingest_column:
+        ingest_status = st.empty()
+        ingest_message = st.empty()
         if st.button("Ingest Case Studies"):
-            with st.status("Ingesting case studies", expanded=True) as status:
+            with ingest_status.status("Ingesting case studies", expanded=True) as status:
                 try:
                     count = ingest_knowledge_base(status.write)
                 except (RuntimeError, ValueError) as error:
                     status.update(label="Ingestion failed", state="error")
-                    st.error(str(error))
+                    ingest_message.error(str(error))
                 else:
                     status.update(label="Case studies are ready", state="complete")
-                    st.success(f"Ingested {count} case-study chunks.")
+                    ingest_message.success(f"Ingested {count} case-study chunks.")
 
     with generate_column:
         if st.button("Generate Document", type="primary"):
+            ingest_status.empty()
+            ingest_message.empty()
             st.session_state.pop("workflow_result", None)
             with st.status("Generating document", expanded=True) as status:
                 try:
