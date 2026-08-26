@@ -1,7 +1,7 @@
 [project]
 name = "document-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agentic document generation with Google ADK and local case study retrieval"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,6 +10,5 @@ dependencies = [
     "google-genai>=2.20.0",
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.3",
-    "sentence-transformers>=6.0.0",
     "streamlit>=1.62.0",
 ]

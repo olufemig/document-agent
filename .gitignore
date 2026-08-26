@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Generated Chroma vector store data
+vector_store/*
+!vector_store/.gitkeep
