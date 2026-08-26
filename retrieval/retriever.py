@@ -26,8 +26,12 @@ def retrieve_case_studies(
     """Return the most relevant case-study chunks from the local Chroma store."""
     if not GOOGLE_API_KEY:
         raise RuntimeError("GOOGLE_API_KEY is required to search case studies.")
-    if top_k < 1 or not VECTOR_STORE_DIR.exists():
+    if top_k < 1:
         return []
+    if not VECTOR_STORE_DIR.exists():
+        raise RuntimeError(
+            "The knowledge base is not initialised. Run `python -m retrieval.ingest`."
+        )
 
     chroma_client = chromadb.PersistentClient(path=str(VECTOR_STORE_DIR))
     try:

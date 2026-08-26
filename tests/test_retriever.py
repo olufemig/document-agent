@@ -62,14 +62,15 @@ class RetrieverTests(unittest.TestCase):
             "Improve retail forecasts\nCapabilities: Forecasting, Analytics"
         )
 
-    def test_returns_empty_list_for_missing_vector_store(self) -> None:
+    def test_reports_missing_vector_store(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             missing_store = Path(temporary_directory) / "missing"
             with (
                 patch.object(retriever, "GOOGLE_API_KEY", "test-key"),
                 patch.object(retriever, "VECTOR_STORE_DIR", missing_store),
             ):
-                self.assertEqual(retriever.retrieve_case_studies("test"), [])
+                with self.assertRaisesRegex(RuntimeError, "not initialised"):
+                    retriever.retrieve_case_studies("test")
 
     def test_returns_empty_list_for_empty_collection(self) -> None:
         collection = Mock()

@@ -1,5 +1,7 @@
 """Document-generation workflow orchestration."""
 
+import json
+
 from collections.abc import Callable
 from typing import TypeVar
 from uuid import uuid4
@@ -10,16 +12,25 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from pydantic import BaseModel
 
+from agents.case_study_agent import create_case_study_agent
 from agents.final_editor import create_final_editor
 from agents.requirement_analyzer import create_requirement_analyzer
 from agents.reviewer import create_reviewer_agent
 from agents.writer import create_writer_agent
-from config import CONTENT_THRESHOLD, GOOGLE_API_KEY, MAX_ITERATIONS, STYLE_THRESHOLD
+from config import (
+    CONTENT_THRESHOLD,
+    GOOGLE_API_KEY,
+    MAX_ITERATIONS,
+    STYLE_THRESHOLD,
+    TOP_K_CASE_STUDIES,
+)
+from retrieval.retriever import retrieve_case_studies
 from schemas import (
     DocumentRequirements,
     DocumentReview,
     DraftCycle,
     EvidencePack,
+    RetrievedEvidence,
     WorkflowResult,
 )
 
@@ -49,6 +60,7 @@ async def _run_agent(
     agent: LlmAgent,
     session_service: InMemorySessionService,
     session_id: str,
+    state_delta: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """Run one ADK agent and return its updated session state."""
     runner = Runner(
@@ -64,6 +76,7 @@ async def _run_agent(
         user_id=USER_ID,
         session_id=session_id,
         new_message=message,
+        state_delta=state_delta,
     ):
         pass
 
@@ -106,6 +119,7 @@ async def generate_document(
     )
 
     requirements: DocumentRequirements | None = None
+    retrieved_evidence: list[RetrievedEvidence] = []
     evidence_pack = EvidencePack()
     current_draft = ""
     review: DocumentReview | None = None
@@ -124,6 +138,56 @@ async def generate_document(
     except Exception as error:
         return WorkflowResult(error=f"Requirement analysis failed: {error}")
 
+    try:
+        query = " ".join(
+            [
+                requirements.purpose,
+                *requirements.keywords,
+                *requirements.required_topics,
+                *requirements.evidence_needed,
+            ]
+        )
+        seen_case_studies: set[str] = set()
+        for evidence in retrieve_case_studies(
+            query,
+            sector=requirements.sector,
+            capabilities=requirements.capabilities,
+            top_k=TOP_K_CASE_STUDIES,
+        ):
+            if evidence.case_study in seen_case_studies:
+                continue
+            seen_case_studies.add(evidence.case_study)
+            retrieved_evidence.append(evidence)
+
+        if retrieved_evidence:
+            report(f"{len(retrieved_evidence)} relevant case studies found")
+            state = await _run_agent(
+                create_case_study_agent(),
+                session_service,
+                session_id,
+                state_delta={
+                    "retrieved_evidence": json.dumps(
+                        [item.model_dump() for item in retrieved_evidence]
+                    )
+                },
+            )
+            evidence_pack = _parse_state_model(state["case_study_evidence"], EvidencePack)
+            report(f"{len(evidence_pack.evidence)} case studies selected")
+        else:
+            report("No relevant case study evidence was identified")
+    except (KeyError, ValueError, TypeError) as error:
+        return WorkflowResult(
+            requirements=requirements,
+            retrieved_evidence=retrieved_evidence,
+            error=f"Could not select case-study evidence: {error}",
+        )
+    except Exception as error:
+        return WorkflowResult(
+            requirements=requirements,
+            retrieved_evidence=retrieved_evidence,
+            error=f"Case-study retrieval failed: {error}",
+        )
+
     for iteration in range(1, MAX_ITERATIONS + 1):
         try:
             state = await _run_agent(create_writer_agent(), session_service, session_id)
@@ -133,6 +197,7 @@ async def generate_document(
             return WorkflowResult(
                 final_document=current_draft,
                 requirements=requirements,
+                retrieved_evidence=retrieved_evidence,
                 evidence_pack=evidence_pack,
                 review=review,
                 iterations=len(history),
@@ -143,6 +208,7 @@ async def generate_document(
             return WorkflowResult(
                 final_document=current_draft,
                 requirements=requirements,
+                retrieved_evidence=retrieved_evidence,
                 evidence_pack=evidence_pack,
                 review=review,
                 iterations=len(history),
@@ -162,6 +228,7 @@ async def generate_document(
             return WorkflowResult(
                 final_document=current_draft,
                 requirements=requirements,
+                retrieved_evidence=retrieved_evidence,
                 evidence_pack=evidence_pack,
                 iterations=len(history),
                 history=history,
@@ -171,6 +238,7 @@ async def generate_document(
             return WorkflowResult(
                 final_document=current_draft,
                 requirements=requirements,
+                retrieved_evidence=retrieved_evidence,
                 evidence_pack=evidence_pack,
                 iterations=len(history),
                 history=history,
@@ -192,6 +260,7 @@ async def generate_document(
         return WorkflowResult(
             final_document=current_draft,
             requirements=requirements,
+            retrieved_evidence=retrieved_evidence,
             evidence_pack=evidence_pack,
             review=review,
             iterations=len(history),
@@ -204,6 +273,7 @@ async def generate_document(
         return WorkflowResult(
             final_document=current_draft,
             requirements=requirements,
+            retrieved_evidence=retrieved_evidence,
             evidence_pack=evidence_pack,
             review=review,
             iterations=len(history),
@@ -216,6 +286,7 @@ async def generate_document(
     return WorkflowResult(
         final_document=final_document,
         requirements=requirements,
+        retrieved_evidence=retrieved_evidence,
         evidence_pack=evidence_pack,
         review=review,
         iterations=len(history),

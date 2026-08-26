@@ -107,6 +107,7 @@ class WorkflowResult(BaseModel):
 
     final_document: str = ""
     requirements: DocumentRequirements | None = None
+    retrieved_evidence: list[RetrievedEvidence] = Field(default_factory=list)
     evidence_pack: EvidencePack = Field(default_factory=EvidencePack)
     review: DocumentReview | None = None
     iterations: int = Field(default=0, ge=0)
