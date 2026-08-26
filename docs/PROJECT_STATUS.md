@@ -303,7 +303,7 @@ Still required are live tests for all Gemini agent calls, score-driven looping, 
 
 ## 21. Development Timeline
 
-Git history is also available and all listed commits are dated 2026-08-26:
+Git history is available and all listed commits are dated 2026-08-26:
 
 1. `2d00395` `first push`
 2. `37041c2` `second push`
