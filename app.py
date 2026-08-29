@@ -28,7 +28,13 @@ def main() -> None:
     """Render the document-generation interface."""
     st.set_page_config(page_title="Document Agent", layout="wide")
     st.title("Document Agent")
-    st.write("Create, review, and improve evidence-grounded professional documents.")
+    st.markdown(
+        """Create Evidence-Grounded Documents
+
+Turn a simple brief into a professional document backed by relevant case studies. Case Studies have already been ingested into a vector database. Now go on and describe what IT related proposal you need, including the audience, tone, length, sections, and any key evidence to include.
+
+Click Generate Document to start the workflow. The agent will select relevant sources, draft and review the document, and present the final version with quality scores, sources used, and reviewer feedback."""
+    )
 
     document_spec = st.text_area(
         "Document specification",
